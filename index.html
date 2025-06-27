@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Class Academic Reports</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #1a252f;
+            --accent-color: #e74c3c;
+            --light-color: #ecf0f1;
+            --success-color: #27ae60;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: var(--primary-color);
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .card {
+            background-color: white;
+            border-radius: 8px;
+            padding: 25px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 1rem;
+            background-color: #f8f9fa;
+        }
+
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            background-color: var(--secondary-color);
+        }
+
+        .btn-success {
+            background-color: var(--success-color);
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @media print {
+            body {
+                background-color: white;
+                padding: 0;
+            }
+            .no-print {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Class Academic Reports</h1>
+        
+        <div class="card no-print">
+            <div class="form-group">
+                <label for="report-class">Select Class</label>
+                <select id="report-class">
+                    <option value="">Select Class</option>
+                    <option value="S1 BLUE NILE">S1 BLUE NILE</option>
+                    <option value="S1 WHITE NILE">S1 WHITE NILE</option>
+                    <option value="S2 BLUE NILE">S2 BLUE NILE</option>
+                    <option value="S2 WHITE NILE">S2 WHITE NILE</option>
+                    <option value="S3 BLUE NILE">S3 BLUE NILE</option>
+                    <option value="S3 WHITE NILE">S3 WHITE NILE</option>
+                    <option value="S4 BLUE NILE">S4 BLUE NILE</option>
+                    <option value="S4 WHITE NILE">S4 WHITE NILE</option>
+                    <option value="S5">S5</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="report-term">Select Term</label>
+                <select id="report-term">
+                    <option value="Term 1">Term 1</option>
+                    <option value="Term 2">Term 2</option>
+                    <option value="Term 3">Term 3</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="report-year">Select Academic Year</label>
+                <select id="report-year">
+                    <option value="2025">2025</option>
+                    <option value="2026">2026</option>
+                    <option value="2027">2027</option>
+                </select>
+            </div>
+            
+            <button id="generate-reports" class="btn-success">Generate Class Reports PDF</button>
+        </div>
+    </div>
+
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyAY-myMpYKworx0MGtBi8YcIvLP0DZIte0",
+            authDomain: "kiara-4c7f7.firebaseapp.com",
+            databaseURL: "https://kiara-4c7f7-default-rtdb.firebaseio.com",
+            projectId: "kiara-4c7f7",
+            storageBucket: "kiara-4c7f7.appspot.com",
+            messagingSenderId: "1060998482969",
+            appId: "1:1060998482969:web:6e6ba386159cb48754ee88",
+            measurementId: "G-M7404GNREX"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        // Grade calculation function
+        function calculateGrade(average) {
+            if (average === '-') return '-';
+            const num = parseFloat(average);
+            if (num >= 2.5) return 'A';
+            if (num >= 2.1) return 'B';
+            if (num >= 1.6) return 'C';
+            if (num >= 1.1) return 'D';
+            return 'E';
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('generate-reports').addEventListener('click', generateClassReportsPDF);
+        });
+
+        function generateClassReportsPDF() {
+            const selectedClass = document.getElementById('report-class').value;
+            const selectedTerm = document.getElementById('report-term').value;
+            const selectedYear = document.getElementById('report-year').value;
+            
+            if (!selectedClass) {
+                alert('Please select a class');
+                return;
+            }
+            
+            database.ref('students').orderByChild('class').equalTo(selectedClass).once('value')
+                .then(snapshot => {
+                    const students = [];
+                    snapshot.forEach(childSnapshot => {
+                        students.push(childSnapshot.val());
+                    });
+                    
+                    if (students.length === 0) {
+                        alert('No students found in this class.');
+                        return;
+                    }
+                    
+                    createPDFReport(students, selectedTerm, selectedYear, selectedClass);
+                })
+                .catch(error => {
+                    console.error('Error loading students:', error);
+                    alert('Error loading student data. Please try again.');
+                });
+        }
+
+        function createPDFReport(students, term, year, className) {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            // Set document properties
+            doc.setProperties({
+                title: `KIARA CITY HIGH SCHOOL - ${className} Reports ${term}`,
+                subject: 'Academic Reports',
+                author: 'KIARA CITY HIGH SCHOOL - BULAGA',
+                keywords: 'academic, report, school',
+                creator: 'KIARA CITY HIGH SCHOOL - BULAGA'
+            });
+            
+            students.forEach((student, index) => {
+                if (index > 0) {
+                    doc.addPage();
+                }
+                
+                // School header with border
+                doc.setDrawColor(44, 62, 80);
+                doc.setFillColor(44, 62, 80);
+                doc.rect(10, 10, 190, 15, 'F');
+                
+                doc.setTextColor(255, 255, 255);
+                doc.setFontSize(16);
+                doc.setFont('helvetica', 'bold');
+                doc.text('KIARA CITY HIGH SCHOOL - BULAGA', 105, 20, { align: 'center' });
+                
+                // School information
+                doc.setTextColor(0, 0, 0);
+                doc.setFontSize(10);
+                doc.setFont('helvetica', 'normal');
+                doc.text('', 105, 27, { align: 'center' });
+                doc.text('LOCATED ALONG MITYANA ROAD 200 MILES OFF KUMWENDA Tel: +256708 212360', 105, 32, { align: 'center' });
+                
+                // Report title with border
+                doc.setDrawColor(44, 62, 80);
+                doc.setFillColor(230, 230, 230);
+                doc.rect(10, 37, 190, 10, 'FD');
+                
+                doc.setTextColor(44, 62, 80);
+                doc.setFontSize(14);
+                doc.setFont('helvetica', 'bold');
+                doc.text(`ACADEMIC REPORT - ${term}`, 105, 43, { align: 'center' });
+                
+                // Student details section - name and class on same line
+                doc.setFontSize(12);
+                doc.setTextColor(0, 0, 0);
+                doc.setFont('helvetica', 'normal');
+                
+                doc.text(`Student Name: ${student.name}`, 20, 60);
+                doc.text(`Class: ${student.class}`, 120, 60);
+                
+                // Marks table
+                const headers = [
+                    [
+                        { content: 'Subject', styles: { fontStyle: 'bold', fillColor: [44, 62, 80], textColor: [255, 255, 255], cellWidth: 'auto' } },
+                        { content: 'HOP', styles: { fontStyle: 'bold', fillColor: [44, 62, 80], textColor: [255, 255, 255], cellWidth: 20 } },
+                        { content: 'BOT', styles: { fontStyle: 'bold', fillColor: [44, 62, 80], textColor: [255, 255, 255], cellWidth: 20 } },
+                        { content: 'MID', styles: { fontStyle: 'bold', fillColor: [44, 62, 80], textColor: [255, 255, 255], cellWidth: 20 } },
+                        { content: 'EOT', styles: { fontStyle: 'bold', fillColor: [44, 62, 80], textColor: [255, 255, 255], cellWidth: 20 } },
+                        { content: 'Term Avg', styles: { fontStyle: 'bold', fillColor: [44, 62, 80], textColor: [255, 255, 255], cellWidth: 25 } },
+                        { content: 'Grade', styles: { fontStyle: 'bold', fillColor: [44, 62, 80], textColor: [255, 255, 255], cellWidth: 20 } }
+                    ]
+                ];
+                
+                const rows = [];
+                let totalAverage = 0;
+                let subjectCount = 0;
+                
+                student.subjects.forEach(subject => {
+                    const marks = student.marks && student.marks[subject] && student.marks[subject][year] 
+                        ? student.marks[subject][year][term] 
+                        : null;
+                    
+                    const hopMark = marks && marks['HOP'] ? marks['HOP'] : '-';
+                    const botMark = marks && marks['BOT'] ? marks['BOT'] : '-';
+                    const midMark = marks && marks['MID'] ? marks['MID'] : '-';
+                    const eotMark = marks && marks['EOT'] ? marks['EOT'] : '-';
+                    
+                    // Calculate term average
+                    const termMarks = [hopMark, botMark, midMark, eotMark].filter(mark => mark !== '-');
+                    let termAvg = '-';
+                    let grade = '-';
+                    
+                    if (termMarks.length > 0) {
+                        const sum = termMarks.reduce((a, b) => a + b, 0);
+                        termAvg = (sum / termMarks.length).toFixed(1);
+                        grade = calculateGrade(termAvg);
+                        totalAverage += parseFloat(termAvg);
+                        subjectCount++;
+                    }
+                    
+                    rows.push([
+                        { content: subject, styles: { cellWidth: 'auto' } },
+                        { content: hopMark, styles: { cellWidth: 20 } },
+                        { content: botMark, styles: { cellWidth: 20 } },
+                        { content: midMark, styles: { cellWidth: 20 } },
+                        { content: eotMark, styles: { cellWidth: 20 } },
+                        { content: termAvg, styles: { cellWidth: 25 } },
+                        { content: grade, styles: { cellWidth: 20 } }
+                    ]);
+                });
+                
+                // Add overall average row
+                if (subjectCount > 0) {
+                    const overallAvg = (totalAverage / subjectCount).toFixed(1);
+                    const overallGrade = calculateGrade(overallAvg);
+                    rows.push([
+                        { content: 'OVERALL AVERAGE', colSpan: 5, styles: { fontStyle: 'bold', cellWidth: 'auto' } },
+                        { content: overallAvg, styles: { fontStyle: 'bold', cellWidth: 25 } },
+                        { content: overallGrade, styles: { fontStyle: 'bold', cellWidth: 20 } }
+                    ]);
+                }
+                
+                doc.autoTable({
+                    startY: 70,
+                    head: headers,
+                    body: rows,
+                    margin: { top: 70, left: 10, right: 10 },
+                    styles: { 
+                        fontSize: 10,
+                        cellPadding: 3,
+                        overflow: 'linebreak',
+                        minCellWidth: 15,
+                        valign: 'middle'
+                    },
+                    columnStyles: {
+                        0: { cellWidth: 'auto' },
+                        1: { cellWidth: 20 },
+                        2: { cellWidth: 20 },
+                        3: { cellWidth: 20 },
+                        4: { cellWidth: 20 },
+                        5: { cellWidth: 25 },
+                        6: { cellWidth: 20 }
+                    },
+                    headStyles: {
+                        fillColor: [44, 62, 80],
+                        textColor: [255, 255, 255],
+                        fontStyle: 'bold',
+                        valign: 'middle'
+                    },
+                    alternateRowStyles: {
+                        fillColor: [240, 240, 240]
+                    },
+                    theme: 'grid',
+                    tableLineColor: [44, 62, 80],
+                    tableLineWidth: 0.1,
+                    didDrawCell: (data) => {
+                        // Prevent text wrapping by truncating long subject names
+                        if (data.column.index === 0 && data.cell.raw.length > 15) {
+                            data.cell.text = data.cell.raw.substring(0, 15) + '...';
+                        }
+                    }
+                });
+                
+                // Comments section
+                const startY = doc.lastAutoTable.finalY + 15;
+                
+                doc.setFontSize(12);
+                doc.setFont('helvetica', 'bold');
+                doc.text('Class Teacher\'s Comment:', 20, startY);
+                doc.setFont('helvetica', 'normal');
+                doc.line(20, startY + 5, 90, startY + 5);
+                doc.text('Signature: _________________________', 20, startY + 15);
+                
+                doc.setFont('helvetica', 'bold');
+                doc.text('Head Teacher\'s Comment:', 120, startY);
+                doc.setFont('helvetica', 'normal');
+                doc.line(120, startY + 5, 190, startY + 5);
+                doc.text('Signature: _________________________', 120, startY + 15);
+                
+                // Footer
+                doc.setFontSize(8);
+                doc.setTextColor(100, 100, 100);
+                doc.text('Generated by KIARA CITY HIGH SCHOOL - BULAGA Academic System - Made by Gevin Tech', 105, 285, { align: 'center' });
+                
+                // Page border
+                doc.setDrawColor(44, 62, 80);
+                doc.rect(5, 5, 200, 287, 'S');
+            });
+            
+            // Save the PDF
+            doc.save(`KIARA_CITY_HS_${className}_Reports_${term}.pdf`);
+        }
+    </script>
+</body>
+</html>
